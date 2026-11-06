@@ -52,11 +52,19 @@ type Licitacion = {
 type Coincidencia = {
   puntaje: number | null;
   veredicto: "conviene" | "revisar" | "no_conviene" | null;
-  razones: { resumen?: string; a_favor?: string[]; en_contra?: string[]; que_falta?: string[] } | null;
+  razones: {
+    resumen?: string;
+    a_favor?: string[];
+    en_contra?: string[];
+    que_falta?: string[];
+    desglose?: { rubro: number; zona: number; monto: number; condiciones: number };
+  } | null;
   evaluado_en: string | null;
 };
 
 type Version = { id: string; resumen_cambio: string | null; detectado_en: string; cambios: unknown };
+
+const sinTildes = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -113,7 +121,8 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
   const municipio = d.comprador.municipio && tituloPropio(d.comprador.municipio);
   const lugar = [
     lic.entidad && tituloPropio(lic.entidad),
-    d.comprador.unidad && tituloPropio(d.comprador.unidad),
+    // La unidad a veces es la misma entidad escrita distinto («Procuraduria» / «Procuraduría»)
+    d.comprador.unidad && sinTildes(d.comprador.unidad) !== sinTildes(lic.entidad ?? "") && tituloPropio(d.comprador.unidad),
     // «Escuintla, Escuintla» → «Escuintla»
     [municipio, depto].filter((x, i, xs) => x && xs.findIndex((y) => y?.toLowerCase() === x.toLowerCase()) === i).join(", "),
   ]
@@ -277,6 +286,25 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
                       </span>
                     </p>
                     {encaje.razones?.resumen && <p className="text-sm leading-relaxed">{encaje.razones.resumen}</p>}
+                    {encaje.razones?.desglose && (
+                      <dl className="cifras grid grid-cols-2 gap-x-4 gap-y-1 rounded-xl bg-papel-2/70 p-3 text-xs">
+                        {(
+                          [
+                            ["Rubro", encaje.razones.desglose.rubro, 50],
+                            ["Zona", encaje.razones.desglose.zona, 20],
+                            ["Monto", encaje.razones.desglose.monto, 15],
+                            ["Condiciones", encaje.razones.desglose.condiciones, 15],
+                          ] as const
+                        ).map(([nombre, puntos, max]) => (
+                          <div key={nombre} className="flex justify-between gap-2">
+                            <dt className="text-tinta-2">{nombre}</dt>
+                            <dd className="font-medium">
+                              {puntos}/{max}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
                     {(
                       [
                         ["A favor", encaje.razones?.a_favor, "text-verde"],

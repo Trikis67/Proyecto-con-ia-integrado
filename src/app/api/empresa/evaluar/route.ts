@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
           fallidas++;
           return;
         }
-        const { resumen, a_favor, en_contra, que_falta } = r.encaje;
+        const { resumen, a_favor, en_contra, que_falta, desglose } = r.encaje;
         // Con el cliente de la sesión: RLS garantiza que solo escribe en su propia empresa.
         // No tocamos `estado`, para no perder el seguimiento que ya tenga.
         const { error: e } = await supabase.from("coincidencias").upsert(
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
             licitacion_id: id,
             puntaje: r.encaje.puntaje,
             veredicto: r.encaje.veredicto,
-            razones: { resumen, a_favor, en_contra, que_falta },
+            razones: { resumen, a_favor, en_contra, que_falta, desglose },
             evaluado_en: new Date().toISOString(),
             actualizado_en: new Date().toISOString(),
           },

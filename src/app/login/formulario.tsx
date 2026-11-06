@@ -30,6 +30,10 @@ export function FormularioLogin({ siguiente }: { siguiente?: string }) {
           Correo de trabajo
         </label>
         <input
+          // React limpia el formulario después de enviarlo: al remontar con el correo
+          // devuelto por la acción, la persona no tiene que escribirlo otra vez.
+          key={conError ? `error-${estado.intento}` : "inicio"}
+          defaultValue={conError ? estado.correo : undefined}
           id="correo"
           name="correo"
           type="email"

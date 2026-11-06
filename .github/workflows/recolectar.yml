@@ -1,0 +1,27 @@
+# Corre el recolector de Guatecompras todos los días.
+# Necesita dos secretos en GitHub (Settings → Secrets and variables → Actions):
+#   NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SECRET_KEY
+name: Recolectar Guatecompras
+
+on:
+  schedule:
+    # Guatecompras regenera los archivos de madrugada (hora de Guatemala, UTC-6).
+    # 12:00 y 00:00 UTC = 6:00 y 18:00 en Guatemala.
+    - cron: "0 0,12 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  recolectar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run recolectar
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}

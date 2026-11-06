@@ -9,7 +9,7 @@ import { rutaSegura } from "@/lib/rutas";
 export type EstadoLogin =
   | { tipo: "inicio" }
   | { tipo: "enviado"; correo: string }
-  | { tipo: "error"; mensaje: string };
+  | { tipo: "error"; mensaje: string; correo?: string; intento?: number };
 
 export async function enviarEnlace(_previo: EstadoLogin, form: FormData): Promise<EstadoLogin> {
   if (!supabaseConfigurado) {
@@ -18,7 +18,7 @@ export async function enviarEnlace(_previo: EstadoLogin, form: FormData): Promis
 
   const correo = String(form.get("correo") ?? "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
-    return { tipo: "error", mensaje: "Ese correo no parece válido. Revisa que tenga @ y dominio." };
+    return { tipo: "error", mensaje: "Ese correo no parece válido. Revisa que tenga @ y dominio.", correo, intento: Date.now() };
   }
 
   const origen = (await headers()).get("origin") ?? "http://localhost:3000";
@@ -33,9 +33,11 @@ export async function enviarEnlace(_previo: EstadoLogin, form: FormData): Promis
   if (error) {
     return {
       tipo: "error",
+      correo,
+      intento: Date.now(),
       mensaje:
         error.status === 429
-          ? "Pediste muchos enlaces seguidos. Espera un minuto y vuelve a intentarlo."
+          ? "Se enviaron demasiados enlaces en poco tiempo. Usa el último que te llegó o vuelve a intentarlo en una hora."
           : "No pudimos enviar el enlace. Intenta de nuevo en un momento.",
     };
   }

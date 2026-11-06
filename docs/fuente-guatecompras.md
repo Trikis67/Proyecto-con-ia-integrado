@@ -1,34 +1,36 @@
 # Fuente de datos: Guatecompras (OCDS)
 
-Investigación de la Fase 0, noviembre de 2026.
+Investigación de las fases 0 y 1, noviembre de 2026.
 
-## Qué hay
-- Guatecompras publica sus procesos en el **Estándar de Datos para las Contrataciones Abiertas (OCDS)** desde mayo de 2024: https://ocds.guatecompras.gt/
-- Licencia **CC BY 4.0**: se pueden usar los datos, también comercialmente, siempre que se cite la fuente. Ya va en el pie de página.
-- El Open Contracting Partnership mantiene una copia en https://data.open-contracting.org/en/publication/142 con descargas por año:
-  - `YEAR.jsonl.gz`: un proceso por línea (2026: unos 377 MB comprimidos).
-  - `YEAR.csv.tar.gz`: versión tabular.
-  - Cobertura: enero de 2020 a la fecha.
+## De dónde salen los datos
+- Portal de datos abiertos: https://ocds.guatecompras.gt/descarga-datos
+- Hay un archivo **por mes** desde 2020 en CSV, XLSX y JSON. **Se regeneran cada día**: el 6 de noviembre todos los meses de 2026 tenían fecha de actualización de ese mismo día.
+- El JSON se descarga de `https://ocds.guatecompras.gt/file/json/{año}/{mes}`. Es un ZIP de unos 4 MB con un JSON de 30 MB adentro. No acepta `HEAD` (devuelve 405) ni descargas por rangos.
+- Formato: un paquete de *records* OCDS, un registro por proceso, con `compiledRelease` (el estado actual del proceso) y la lista de *releases*.
+- Licencia **CC BY 4.0**: se pueden usar los datos citando la fuente. La cita va en el pie de página.
 
-## Qué trae cada proceso (lo que nos sirve)
-| OCDS | Columna en `licitaciones` |
-|---|---|
-| `ocid` | `ocid` |
-| `tender.id` (NOG) | `nog` |
-| `tender.title` / `tender.description` | `titulo` / `descripcion` |
-| `buyer.name` | `entidad` |
-| `tender.procurementMethodDetails` | `modalidad` |
-| `tender.status` | `estado` |
-| `tender.value.amount` / `.currency` | `monto` / `moneda` |
-| `tender.tenderPeriod.endDate` | `fecha_cierre` |
-| `tender.documents[]` | PDFs de las bases (Fase 2) |
+## Reglas del sitio (robots.txt)
+- `User-agent: *` con `Allow: /` y `Content-Signal: search=yes, ai-train=no, use=reference`.
+- **No se pueden usar estos datos para entrenar modelos de IA.** Triki Radar solo los muestra y los analiza para cada usuario (y en la Fase 2 la IA los lee para resumirlos), nunca los usa para entrenar.
+- El recolector se identifica como `TrikiRadar/0.1 (+https://trikis.nl)` y baja solo 2 archivos dos veces al día.
 
-Hay buena cobertura de convocatorias (unos 1.8 millones de procesos) y adjudicaciones. Casi no hay datos de contratos ni de pagos, pero para el radar no hacen falta.
+## Qué trae (noviembre de 2026: 5,215 procesos)
+| Dato | Cobertura | Columna |
+|---|---|---|
+| Título, entidad compradora y unidad | 100% | `titulo`, `entidad`, `datos.comprador` |
+| Departamento y municipio del comprador | ~100% | `departamento` |
+| Modalidad (Compra directa: 91%, Licitación pública, Cotización…) | 100% | `modalidad` |
+| Estado (Vigente 67%, Evaluación 27%, Adjudicado 4%…) | 100% | `estado_detalle` |
+| Ítems con cantidad, unidad, código UNSPSC y características | 100% | `datos.items`, `texto_items` |
+| Documentos (bases, convocatoria, pedido) en PDF | 100% | `datos.documentos` |
+| Ofertas recibidas (quién ofertó) | 50% | `num_ofertas`, `datos.ofertas` |
+| Adjudicación con proveedor y monto | 4.5% | `monto_adjudicado`, `proveedores_adjudicados` |
+| **Monto estimado** | **0%** | `monto` (lo llenará la IA) |
+| **Fecha de cierre** | **6%** | `fecha_cierre` (lo llenará la IA) |
 
-## Problemas de calidad conocidos
-- Licitantes y contactos duplicados en `tender.tenderers` y `parties`.
-- Fechas de `contracts.dateSigned` con años mal escritos o con espacios. Hay que normalizarlas y no confiar en ellas.
+Conclusión: el monto estimado y la fecha límite para ofertar **solo están en los PDFs**. Extraerlos es el trabajo principal de la IA en la Fase 2.
 
-## Pendiente para la Fase 1
-- **Frescura:** la copia del OCP se actualiza más o menos una vez al mes y el radar necesita datos diarios. El portal oficial `ocds.guatecompras.gt` respondió **403** a peticiones automáticas. Toca revisarlo desde un navegador normal para ver si tiene una API o descargas diarias y en qué condiciones se puede usar.
-- Plan B: cargar el histórico desde la copia del OCP y sacar las novedades diarias del portal, respetando sus términos y consultando con poca frecuencia.
+## Riesgos
+- **Verificación del navegador en www.guatecompras.gt.** La ficha del concurso (`/concursos/consultaConcurso.aspx?nog=…`) muestra una pantalla de "Revisaremos tu navegador" que no pasa sola. Para la persona usuaria no es problema, porque abre el enlace en su navegador. Pero los PDFs viven en ese mismo dominio (`/concursos/files/…`), así que en la Fase 2 hay que probar si se pueden descargar automáticamente. **Nunca se resuelve ni se salta un captcha.** Si los PDFs quedan bloqueados, el plan B es que la persona suba el PDF o pedir a la DGAE un acceso oficial.
+- Los licitantes vienen duplicados: el recolector los deja únicos.
+- La copia del Open Contracting Partnership (https://data.open-contracting.org/en/publication/142) sirve para el histórico desde 2020 si algún día hace falta.

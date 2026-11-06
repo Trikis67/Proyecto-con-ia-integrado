@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { CalendarClock, FileText, Radar as RadarIcon, Sparkles, BellRing } from "lucide-react";
+import { ArrowRight, CalendarClock, FileText, Radar as RadarIcon, Sparkles, BellRing } from "lucide-react";
 import { Marca } from "@/components/marca";
 import { Pie } from "@/components/pie";
 import { Radar } from "@/components/radar";
-import { BotonDemo } from "@/components/boton-demo";
 
 const PASOS = [
   {
@@ -54,13 +53,16 @@ export default function Inicio() {
               Triki Radar vigila Guatecompras todos los días, lee las bases con inteligencia artificial y te avisa
               cuando aparece una convocatoria hecha a la medida de tu empresa.
             </p>
-            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
-              <BotonDemo />
-              <Link href="/login" className="text-sm font-medium text-tinta-2 underline decoration-linea underline-offset-4 hover:text-tinta">
-                Entrar con mi correo
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <Link
+                href="/login"
+                className="group inline-flex items-center gap-2 rounded-full bg-tinta px-6 py-3.5 font-medium text-papel shadow-[0_6px_20px_-8px_oklch(23%_0.035_255/0.6)] transition-[background-color,transform] duration-300 ease-salida hover:bg-sello-hondo active:scale-[0.98]"
+              >
+                Probar el radar
+                <ArrowRight className="size-4 transition-transform duration-300 ease-salida group-hover:translate-x-0.5" />
               </Link>
+              <span className="text-sm text-tinta-2">Gratis mientras está en beta</span>
             </div>
-            <p className="mt-4 text-sm text-tinta-2">Sin registrarte: entras con una empresa de ejemplo y licitaciones reales de Guatecompras.</p>
           </div>
 
           <div className="relative flex justify-center">

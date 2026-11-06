@@ -53,6 +53,12 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/api/
     .maybeSingle<{ id: string; entidad: string | null; datos: DatosLicitacion }>();
   if (!lic) return error("No encontramos esa licitación.", 404);
 
+  // Guatecompras nombra los archivos «NOG@nombre.pdf»: si el NOG no coincide, avisamos sin gastar en la IA
+  const nogArchivo = pdf?.nombre.match(/^(\d{6,})@/)?.[1];
+  if (nogArchivo && lic.datos.nog && nogArchivo !== lic.datos.nog) {
+    return error(`Ese PDF es del NOG ${nogArchivo} y esta licitación es la ${lic.datos.nog}. Súbelo en su licitación.`, 409);
+  }
+
   const resultado = await analizarLicitacion({ datos: lic.datos, entidad: lic.entidad, pdf });
 
   await admin.from("uso_ia").insert({

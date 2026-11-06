@@ -69,5 +69,7 @@ $$;
 grant execute on function public.candidatas(uuid, int, int) to authenticated;
 
 -- Dejar que la persona cree su empresa y vea a sus compañeros de equipo
+-- (drop + create para que la migración se pueda ejecutar más de una vez)
+drop policy if exists "ver miembros de mi empresa" on public.miembros;
 create policy "ver miembros de mi empresa" on public.miembros
   for select to authenticated using (public.es_miembro(empresa_id));

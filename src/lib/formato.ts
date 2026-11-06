@@ -163,6 +163,7 @@ export const formatoFechaLarga = (iso: string | null) => (iso ? fechaLarga.forma
 export function haceCuanto(iso: string | null, ahora = Date.now()) {
   if (!iso) return "—";
   const min = Math.round((new Date(iso).getTime() - ahora) / 60000);
+  if (Math.abs(min) < 1) return "hace un momento"; // Intl diría «este minuto»
   if (Math.abs(min) < 60) return relativo.format(min, "minute");
   const horas = Math.round(min / 60);
   if (Math.abs(horas) < 24) return relativo.format(horas, "hour");

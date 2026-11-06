@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, FileText, History } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FileText, History, Sparkles } from "lucide-react";
 import { Estado } from "@/components/estado";
 import { exigirSesion } from "@/lib/sesion";
 import {
@@ -17,6 +17,9 @@ import {
   tituloPropio,
 } from "@/lib/formato";
 import type { DatosLicitacion } from "@/lib/guatecompras/ocds";
+import type { Analisis } from "@/lib/ia/analizar";
+import { AnalizarIA } from "./analizar-ia";
+import { PanelAnalisis } from "./panel-analisis";
 
 export const metadata: Metadata = { title: "Licitación" };
 
@@ -36,6 +39,12 @@ type Licitacion = {
   monto_adjudicado: number | null;
   moneda: string | null;
   datos: DatosLicitacion;
+  titulo_ia: string | null;
+  analisis_ia: Analisis | null;
+  monto_estimado_ia: number | null;
+  fecha_cierre_ia: string | null;
+  ia_documento: string | null;
+  ia_analizado_en: string | null;
 };
 
 type Version = { id: string; resumen_cambio: string | null; detectado_en: string; cambios: unknown };
@@ -64,7 +73,7 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
     supabase
       .from("licitaciones")
       .select(
-        "id, nog, titulo, entidad, departamento, modalidad, estado_detalle, categoria, fecha_publicacion, fecha_cierre, fecha_fuente, url, monto_adjudicado, moneda, datos",
+        "id, nog, titulo, entidad, departamento, modalidad, estado_detalle, categoria, fecha_publicacion, fecha_cierre, fecha_fuente, url, monto_adjudicado, moneda, datos, titulo_ia, analisis_ia, monto_estimado_ia, fecha_cierre_ia, ia_documento, ia_analizado_en",
       )
       .eq("id", id)
       .maybeSingle<Licitacion>(),
@@ -79,7 +88,8 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
   if (!lic) notFound();
 
   const d = lic.datos;
-  const titulo = frase(lic.titulo);
+  // La IA escribe el título bien (nombres propios incluidos); sin análisis, la regla de formato
+  const titulo = lic.titulo_ia ?? frase(lic.titulo);
   const depto = departamento(lic.departamento);
   const municipio = d.comprador.municipio && tituloPropio(d.comprador.municipio);
   const lugar = [
@@ -94,7 +104,15 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
     ["Modalidad", modalidadCorta(lic.modalidad)],
     ["Tipo", lic.categoria ? (CATEGORIAS[lic.categoria] ?? lic.categoria) : null],
     ["Publicada", formatoFechaLarga(lic.fecha_publicacion)],
-    ["Cierre", lic.fecha_cierre ? formatoFechaLarga(lic.fecha_cierre) : "No viene en los datos; está en las bases"],
+    [
+      "Cierre",
+      lic.fecha_cierre
+        ? formatoFechaLarga(lic.fecha_cierre)
+        : lic.fecha_cierre_ia
+          ? `${formatoFechaLarga(lic.fecha_cierre_ia)} (según las bases)`
+          : "No viene en los datos; está en las bases",
+    ],
+    ["Monto estimado", lic.monto_estimado_ia != null ? `${formatearMonto(lic.monto_estimado_ia)} (según las bases)` : null],
     ["Ofertas recibidas", String(d.ofertas.length)],
     ["Monto adjudicado", lic.monto_adjudicado != null ? formatearMonto(lic.monto_adjudicado, lic.moneda) : null],
   ];
@@ -129,6 +147,26 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
 
       <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-12">
+          <section aria-labelledby="titulo-ia" className="rounded-2xl bg-papel-2/70 p-6 ring-1 ring-linea">
+            <h2 id="titulo-ia" className="flex items-center gap-2 font-semibold">
+              <Sparkles className="size-4 text-sello" /> Análisis con IA
+            </h2>
+            {lic.analisis_ia ? (
+              <div className="mt-5">
+                <PanelAnalisis analisis={lic.analisis_ia} documento={lic.ia_documento} analizadoEn={lic.ia_analizado_en} />
+              </div>
+            ) : (
+              <p className="mt-2 max-w-[60ch] text-sm leading-relaxed text-tinta-2">
+                Guatecompras no publica el monto, la fecha de cierre ni los requisitos en sus datos: están en las bases. Sube
+                el PDF y la IA te los resume, con la página donde lo dice.
+              </p>
+            )}
+            <div className={lic.analisis_ia ? "mt-6 border-t border-linea pt-5" : "mt-5"}>
+              {lic.analisis_ia && <p className="mb-3 text-sm text-tinta-2">¿Tienes otro documento de esta licitación?</p>}
+              <AnalizarIA id={lic.id} yaAnalizada={Boolean(lic.analisis_ia)} />
+            </div>
+          </section>
+
           <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
             {hechos
               .filter(([, v]) => v)
@@ -209,7 +247,7 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
               })}
             </ul>
             <p className="mt-3 text-xs leading-relaxed text-tinta-2">
-              En la Fase 2 la IA lee estos PDFs y saca el monto, la fecha de cierre y los requisitos.
+              Guatecompras no deja descargarlos automáticamente: ábrelos aquí, bájalos y súbelos en «Análisis con IA».
             </p>
           </section>
 

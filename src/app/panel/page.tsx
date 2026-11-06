@@ -119,6 +119,7 @@ type FilaLista = {
   id: string;
   nog: string | null;
   titulo: string;
+  titulo_ia: string | null;
   entidad: string | null;
   departamento: string | null;
   modalidad: string | null;
@@ -136,7 +137,7 @@ async function Resultados({ searchParams }: Pick<PageProps<"/panel">, "searchPar
   let consulta = supabase
     .from("licitaciones")
     .select(
-      "id, nog, titulo, entidad, departamento, modalidad, estado_detalle, fecha_publicacion, fecha_fuente, num_documentos, num_ofertas",
+      "id, nog, titulo, titulo_ia, entidad, departamento, modalidad, estado_detalle, fecha_publicacion, fecha_fuente, num_documentos, num_ofertas",
       { count: "estimated" },
     );
   if (filtros.q) consulta = consulta.textSearch("busqueda", filtros.q, { type: "websearch", config: "spanish" });
@@ -190,7 +191,7 @@ async function Resultados({ searchParams }: Pick<PageProps<"/panel">, "searchPar
                   {seActualizo(f) && <span className="text-xs font-medium text-sello-hondo">Con cambios</span>}
                 </div>
                 <h2 className="mt-1.5 line-clamp-2 font-medium leading-snug text-tinta group-hover:underline">
-                  {frase(f.titulo)}
+                  {f.titulo_ia ?? frase(f.titulo)}
                 </h2>
                 <p className="mt-1 truncate text-sm text-tinta-2">
                   {[f.entidad && tituloPropio(f.entidad), departamento(f.departamento), modalidadCorta(f.modalidad)]

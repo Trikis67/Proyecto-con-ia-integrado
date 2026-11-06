@@ -4,6 +4,12 @@ Radar de licitaciones públicas con IA. Vigila Guatecompras, detecta cada cambio
 
 **Stack:** Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind 4 · Supabase (Postgres + pgvector + Auth) · API de Claude (desde la Fase 2).
 
+## Análisis con IA (Fase 2)
+- En cada licitación, la persona sube las bases en PDF (Guatecompras no permite bajarlas automáticamente) o analiza solo con los datos.
+- **Claude Haiku 5.5** con salida estructurada devuelve resumen, título claro, rubros, monto estimado, fecha de cierre, visita técnica, requisitos por tipo, garantías, documentos a presentar, criterios de evaluación y alertas, **cada dato con la página del PDF** donde aparece.
+- Lo que no está en el documento queda vacío: el modelo tiene prohibido inventar, y el texto del PDF se trata como contenido, nunca como instrucciones.
+- Cada llamada queda en `uso_ia` con tokens y costo (≈ $0.0006 solo con datos), con un límite de 25 análisis por persona al día.
+
 ## Qué hace hoy (Fase 1)
 - Baja a diario los datos abiertos de Guatecompras (unos 37 mil procesos entre el mes actual y el anterior).
 - Compara cada licitación con la versión guardada mediante una huella SHA-256 y, si cambió, guarda qué cambió y lo explica en español: «Pasó de «Vigente» a «Adjudicado». Se adjudicó a X por Q 324,500.00.».
@@ -18,7 +24,7 @@ Radar de licitaciones públicas con IA. Vigila Guatecompras, detecta cada cambio
 2. Crea un proyecto gratis en [supabase.com](https://supabase.com).
 3. En Supabase, abre **SQL Editor** y ejecuta, en orden, los archivos de [`supabase/migrations/`](supabase/migrations/).
 4. En **Authentication → URL Configuration**, pon `http://localhost:3000` como *Site URL* y agrega `http://localhost:3000/auth/callback` a *Redirect URLs*.
-5. Copia `.env.example` como `.env.local` y llena la URL, la *publishable key* y la *secret key* (Project Settings → API Keys).
+5. Copia `.env.example` como `.env.local` y llena la URL, la *publishable key* y la *secret key* de Supabase (Project Settings → API Keys), y `ANTHROPIC_API_KEY` (platform.claude.com → API Keys).
 6. Trae las licitaciones y arranca:
    ```bash
    npm run recolectar

@@ -20,6 +20,8 @@ import type { DatosLicitacion } from "@/lib/guatecompras/ocds";
 import type { Analisis } from "@/lib/ia/analizar";
 import { AnalizarIA } from "./analizar-ia";
 import { PanelAnalisis } from "./panel-analisis";
+import { EvaluarEncaje } from "./encaje";
+import { miEmpresa } from "@/lib/empresa";
 
 export const metadata: Metadata = { title: "Licitación" };
 
@@ -45,6 +47,13 @@ type Licitacion = {
   fecha_cierre_ia: string | null;
   ia_documento: string | null;
   ia_analizado_en: string | null;
+};
+
+type Coincidencia = {
+  puntaje: number | null;
+  veredicto: "conviene" | "revisar" | "no_conviene" | null;
+  razones: { resumen?: string; a_favor?: string[]; en_contra?: string[]; que_falta?: string[] } | null;
+  evaluado_en: string | null;
 };
 
 type Version = { id: string; resumen_cambio: string | null; detectado_en: string; cambios: unknown };
@@ -86,6 +95,16 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
       .returns<Version[]>(),
   ]);
   if (!lic) notFound();
+
+  const empresa = await miEmpresa(supabase);
+  const { data: encaje } = empresa
+    ? await supabase
+        .from("coincidencias")
+        .select("puntaje, veredicto, razones, evaluado_en")
+        .eq("empresa_id", empresa.id)
+        .eq("licitacion_id", id)
+        .maybeSingle<Coincidencia>()
+    : { data: null };
 
   const d = lic.datos;
   // La IA escribe el título bien (nombres propios incluidos); sin análisis, la regla de formato
@@ -228,6 +247,65 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
         </div>
 
         <aside className="space-y-10">
+          <section aria-labelledby="titulo-encaje">
+            <h2 id="titulo-encaje" className="font-semibold">
+              {empresa ? `Encaje con ${empresa.nombre}` : "¿Te conviene?"}
+            </h2>
+            {!empresa ? (
+              <p className="mt-2 text-sm leading-relaxed text-tinta-2">
+                <Link href="/panel/empresa" className="underline">
+                  Crea el perfil de tu empresa
+                </Link>{" "}
+                y la IA te dirá si esta licitación te conviene y por qué.
+              </p>
+            ) : (
+              <div className="mt-3 space-y-4">
+                {encaje?.puntaje != null && (
+                  <div className="space-y-3">
+                    <p className="flex items-baseline gap-3">
+                      <span className="cifras font-display text-4xl font-medium leading-none">{encaje.puntaje}</span>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          encaje.veredicto === "conviene"
+                            ? "bg-verde/12 text-verde"
+                            : encaje.veredicto === "revisar"
+                              ? "bg-sello-tenue text-sello-hondo"
+                              : "bg-papel-2 text-tinta-2"
+                        }`}
+                      >
+                        {encaje.veredicto === "conviene" ? "Te conviene" : encaje.veredicto === "revisar" ? "Revisar" : "No te conviene"}
+                      </span>
+                    </p>
+                    {encaje.razones?.resumen && <p className="text-sm leading-relaxed">{encaje.razones.resumen}</p>}
+                    {(
+                      [
+                        ["A favor", encaje.razones?.a_favor, "text-verde"],
+                        ["En contra", encaje.razones?.en_contra, "text-sello-hondo"],
+                        ["Te falta saber", encaje.razones?.que_falta, "text-tinta-2"],
+                      ] as const
+                    ).map(([titulo, lista, tono]) =>
+                      lista?.length ? (
+                        <div key={titulo}>
+                          <h3 className={`text-xs font-semibold uppercase tracking-wide ${tono}`}>{titulo}</h3>
+                          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm leading-relaxed text-tinta-2 marker:text-linea">
+                            {lista.map((x) => (
+                              <li key={x}>{x}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null,
+                    )}
+                    {encaje.evaluado_en && <p className="text-xs text-tinta-2">Evaluado {haceCuanto(encaje.evaluado_en)}</p>}
+                  </div>
+                )}
+                <EvaluarEncaje id={lic.id} yaEvaluada={encaje?.puntaje != null} />
+                {lic.analisis_ia == null && (
+                  <p className="text-xs leading-relaxed text-tinta-2">Si primero analizas las bases, la evaluación considera requisitos y garantías.</p>
+                )}
+              </div>
+            )}
+          </section>
+
           <section>
             <h2 className="flex items-center gap-2 font-semibold">
               <FileText className="size-4 text-tinta-2" /> Documentos ({d.documentos.length})

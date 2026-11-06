@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { analizarLicitacion, MODELO } from "@/lib/ia/analizar";
+import { llamadasRestantes, LLAMADAS_IA_POR_DIA } from "@/lib/ia/limite";
 import type { DatosLicitacion } from "@/lib/guatecompras/ocds";
 
 // Leer unas bases largas puede tardar más de un minuto
@@ -9,8 +10,6 @@ export const maxDuration = 300;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PDF_MB = 20;
-// Cada análisis cuesta dinero: límite por persona para que nadie lo dispare sin querer
-const ANALISIS_POR_DIA = 25;
 
 const error = (mensaje: string, status: number) => NextResponse.json({ ok: false, error: mensaje }, { status });
 
@@ -24,14 +23,8 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/api/
   if (!usuarioId) return error("Tu sesión expiró. Vuelve a entrar.", 401);
 
   const admin = createAdminClient();
-  const hace24h = new Date(Date.now() - 86_400_000).toISOString();
-  const { count } = await admin
-    .from("uso_ia")
-    .select("id", { count: "exact", head: true })
-    .eq("usuario_id", usuarioId)
-    .gte("creado_en", hace24h);
-  if ((count ?? 0) >= ANALISIS_POR_DIA) {
-    return error(`Llegaste al límite de ${ANALISIS_POR_DIA} análisis por día. Vuelve a intentarlo mañana.`, 429);
+  if ((await llamadasRestantes(admin, usuarioId)) === 0) {
+    return error(`Llegaste al límite de ${LLAMADAS_IA_POR_DIA} usos de la IA por día. Vuelve a intentarlo mañana.`, 429);
   }
 
   // El PDF es opcional: sin él la IA trabaja solo con los datos de Guatecompras

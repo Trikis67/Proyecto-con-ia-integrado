@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, FileText, Radar as RadarIcon, RefreshCw, Search, Users } from "lucide-react";
 import { Estado } from "@/components/estado";
 import { exigirSesion } from "@/lib/sesion";
+import { miEmpresa } from "@/lib/empresa";
+import { SinPerfil, VistaEmpresa } from "./vista-empresa";
 import {
   departamento,
   departamentoCrudo,
@@ -42,25 +44,65 @@ export default function Panel({ searchParams }: PageProps<"/panel">) {
           <UltimaCorrida />
         </Suspense>
       </div>
-      <Suspense fallback={<FormularioFiltros filtros={{ q: "", estado: "Vigente", depto: "", pagina: 1 }} />}>
-        <FiltrosDesdeUrl searchParams={searchParams} />
-      </Suspense>
       <Suspense fallback={<ListaCargando />}>
-        <Resultados searchParams={searchParams} />
+        <Cuerpo searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function FiltrosDesdeUrl({ searchParams }: Pick<PageProps<"/panel">, "searchParams">) {
-  return <FormularioFiltros filtros={leerFiltros(await searchParams)} />;
+/** Con perfil de empresa, la vista por defecto es «Para mi empresa»; sin perfil, «Todas». */
+async function Cuerpo({ searchParams }: Pick<PageProps<"/panel">, "searchParams">) {
+  const sp = await searchParams;
+  const { supabase } = await exigirSesion();
+  const empresa = await miEmpresa(supabase);
+  const vistaPedida = Array.isArray(sp.vista) ? sp.vista[0] : sp.vista;
+  const vista = vistaPedida === "todas" || vistaPedida === "empresa" ? vistaPedida : empresa ? "empresa" : "todas";
+  const filtros = leerFiltros(sp);
+
+  return (
+    <>
+      <nav className="mt-8 flex gap-1 border-b border-linea" aria-label="Vistas">
+        {(
+          [
+            ["empresa", empresa ? `Para ${empresa.nombre}` : "Para mi empresa"],
+            ["todas", "Todas"],
+          ] as const
+        ).map(([clave, etiqueta]) => (
+          <Link
+            key={clave}
+            href={`/panel?vista=${clave}`}
+            aria-current={vista === clave ? "page" : undefined}
+            className={`-mb-px max-w-[60vw] truncate border-b-2 px-3 pb-2.5 text-sm font-medium no-underline transition-colors ${
+              vista === clave ? "border-sello text-tinta" : "border-transparent text-tinta-2 hover:text-tinta"
+            }`}
+          >
+            {etiqueta}
+          </Link>
+        ))}
+      </nav>
+      {vista === "empresa" ? (
+        empresa ? (
+          <VistaEmpresa supabase={supabase} empresa={empresa} pagina={filtros.pagina} />
+        ) : (
+          <SinPerfil />
+        )
+      ) : (
+        <>
+          <FormularioFiltros filtros={filtros} />
+          <Resultados filtros={filtros} />
+        </>
+      )}
+    </>
+  );
 }
 
 function FormularioFiltros({ filtros }: { filtros: Filtros }) {
   const campo =
     "rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-sm text-tinta outline-none transition-[border-color,box-shadow] duration-200 focus:border-tinta focus:shadow-[0_0_0_4px_var(--sello-tenue)]";
   return (
-    <form action="/panel" className="mt-8 grid grid-cols-2 gap-3 md:flex" role="search">
+    <form action="/panel" className="mt-6 grid grid-cols-2 gap-3 md:flex" role="search">
+      <input type="hidden" name="vista" value="todas" />
       <label className="relative col-span-2 md:min-w-64 md:flex-1">
         <span className="sr-only">Buscar</span>
         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-tinta-3" />
@@ -130,8 +172,7 @@ type FilaLista = {
   num_ofertas: number | null;
 };
 
-async function Resultados({ searchParams }: Pick<PageProps<"/panel">, "searchParams">) {
-  const filtros = leerFiltros(await searchParams);
+async function Resultados({ filtros }: { filtros: Filtros }) {
   const { supabase } = await exigirSesion();
 
   let consulta = supabase
@@ -163,7 +204,7 @@ async function Resultados({ searchParams }: Pick<PageProps<"/panel">, "searchPar
   const total = count ?? filas.length;
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
   const enlace = (pagina: number) => {
-    const p = new URLSearchParams();
+    const p = new URLSearchParams({ vista: "todas" });
     if (filtros.q) p.set("q", filtros.q);
     p.set("estado", filtros.estado);
     if (filtros.depto) p.set("depto", filtros.depto);
@@ -254,7 +295,7 @@ function SinResultados({ hayFiltros }: { hayFiltros: boolean }) {
         {hayFiltros ? (
           <>
             Prueba con otras palabras o{" "}
-            <Link href="/panel?estado=" className="underline">
+            <Link href="/panel?vista=todas&estado=" className="underline">
               quita los filtros
             </Link>
             .

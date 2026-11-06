@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { analizarLicitacion, MODELO } from "@/lib/ia/analizar";
-import { llamadasRestantes, LLAMADAS_IA_POR_DIA } from "@/lib/ia/limite";
+import { llamadasRestantes, mensajeLimite } from "@/lib/ia/limite";
 import type { DatosLicitacion } from "@/lib/guatecompras/ocds";
 
 // Leer unas bases largas puede tardar más de un minuto
@@ -23,9 +23,8 @@ export async function POST(request: NextRequest, { params }: RouteContext<"/api/
   if (!usuarioId) return error("Tu sesión expiró. Vuelve a entrar.", 401);
 
   const admin = createAdminClient();
-  if ((await llamadasRestantes(admin, usuarioId)) === 0) {
-    return error(`Llegaste al límite de ${LLAMADAS_IA_POR_DIA} usos de la IA por día. Vuelve a intentarlo mañana.`, 429);
-  }
+  const esDemo = Boolean(sesion?.claims?.is_anonymous);
+  if ((await llamadasRestantes(admin, usuarioId, esDemo)) === 0) return error(mensajeLimite(esDemo), 429);
 
   // El PDF es opcional: sin él la IA trabaja solo con los datos de Guatecompras
   let pdf: { nombre: string; base64: string } | undefined;

@@ -21,6 +21,7 @@ import type { Analisis } from "@/lib/ia/analizar";
 import { AnalizarIA } from "./analizar-ia";
 import { PanelAnalisis } from "./panel-analisis";
 import { EvaluarEncaje } from "./encaje";
+import { elegirBases } from "@/lib/guatecompras/documentos";
 import { miEmpresa } from "@/lib/empresa";
 
 export const metadata: Metadata = { title: "Licitación" };
@@ -191,7 +192,7 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
             )}
             <div className={lic.analisis_ia ? "mt-6 border-t border-linea pt-5" : "mt-5"}>
               {lic.analisis_ia && <p className="mb-3 text-sm text-tinta-2">¿Tienes otro documento de esta licitación?</p>}
-              <AnalizarIA id={lic.id} yaAnalizada={Boolean(lic.analisis_ia)} />
+              <AnalizarIA id={lic.id} yaAnalizada={Boolean(lic.analisis_ia)} bases={elegirBases(d.documentos)} urlGuatecompras={lic.url} />
             </div>
           </section>
 

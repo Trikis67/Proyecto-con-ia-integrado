@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { miEmpresa } from "@/lib/empresa";
 import { evaluarEncaje } from "@/lib/ia/encaje";
 import { MODELO, type Analisis } from "@/lib/ia/analizar";
-import { llamadasRestantes, LLAMADAS_IA_POR_DIA } from "@/lib/ia/limite";
+import { llamadasRestantes, mensajeLimite } from "@/lib/ia/limite";
 import type { DatosLicitacion } from "@/lib/guatecompras/ocds";
 
 export const maxDuration = 120;
@@ -29,8 +29,9 @@ export async function POST(request: NextRequest) {
   if (!empresa) return error("Primero llena el perfil de tu empresa.", 400);
 
   const admin = createAdminClient();
-  const restantes = await llamadasRestantes(admin, usuarioId);
-  if (restantes === 0) return error(`Llegaste al límite de ${LLAMADAS_IA_POR_DIA} usos de la IA por día.`, 429);
+  const esDemo = Boolean(sesion?.claims?.is_anonymous);
+  const restantes = await llamadasRestantes(admin, usuarioId, esDemo);
+  if (restantes === 0) return error(mensajeLimite(esDemo), 429);
 
   const cuerpo = (await request.json().catch(() => ({}))) as { ids?: unknown };
   let ids = Array.isArray(cuerpo.ids) ? cuerpo.ids.filter((x): x is string => typeof x === "string" && UUID.test(x)) : [];

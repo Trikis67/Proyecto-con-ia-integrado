@@ -4,6 +4,7 @@ import { Marca } from "@/components/marca";
 import { AvisoConfiguracion } from "@/components/aviso-configuracion";
 import { supabaseConfigurado } from "@/lib/supabase/config";
 import { FormularioLogin } from "./formulario";
+import { BotonDemo } from "@/components/boton-demo";
 
 export const metadata: Metadata = { title: "Entrar" };
 
@@ -20,6 +21,10 @@ export default function Login({ searchParams }: PageProps<"/login">) {
             <ContenidoLogin searchParams={searchParams} />
           </Suspense>
         </div>
+        <div className="mt-10 border-t border-linea pt-6">
+          <p className="mb-3 text-sm text-tinta-2">¿Solo quieres verlo funcionando?</p>
+          <BotonDemo texto="Entrar al demo sin correo" principal={false} />
+        </div>
       </div>
     </main>
   );
@@ -29,6 +34,11 @@ async function ContenidoLogin({ searchParams }: Pick<PageProps<"/login">, "searc
   const { siguiente, error } = await searchParams;
   return (
     <>
+      {error === "demo" && (
+        <p role="alert" className="rounded-xl bg-sello-tenue p-3 text-sm text-sello-hondo">
+          No pudimos abrir el demo en este momento. Intenta de nuevo en un minuto.
+        </p>
+      )}
       {error === "enlace" && (
         <p role="alert" className="rounded-xl bg-sello-tenue p-3 text-sm text-sello-hondo">
           Ese enlace ya se usó o caducó. Pide uno nuevo.

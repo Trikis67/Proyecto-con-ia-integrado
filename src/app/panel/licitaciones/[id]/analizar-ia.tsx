@@ -2,10 +2,21 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FileUp, LoaderCircle, Sparkles, X } from "lucide-react";
+import { ArrowUpRight, Download, FileUp, LoaderCircle, Sparkles, X } from "lucide-react";
+import type { DocumentoBase } from "@/lib/guatecompras/documentos";
 
 /** Sube las bases (opcional) y pide el análisis. Al terminar recarga los datos del servidor. */
-export function AnalizarIA({ id, yaAnalizada }: { id: string; yaAnalizada: boolean }) {
+export function AnalizarIA({
+  id,
+  yaAnalizada,
+  bases = [],
+  urlGuatecompras,
+}: {
+  id: string;
+  yaAnalizada: boolean;
+  bases?: DocumentoBase[];
+  urlGuatecompras?: string | null;
+}) {
   const router = useRouter();
   const entrada = useRef<HTMLInputElement>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
@@ -37,6 +48,45 @@ export function AnalizarIA({ id, yaAnalizada }: { id: string; yaAnalizada: boole
 
   return (
     <div className="space-y-3">
+      {bases.length > 0 && (
+        <div className="rounded-xl bg-papel px-4 py-3 ring-1 ring-linea">
+          <p className="text-sm font-medium">1. Baja las bases</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-tinta-2">
+            Guatecompras pide verificar tu navegador, así que la descarga la haces tú: se abre en otra pestaña.
+          </p>
+          <ul className="mt-2.5 space-y-2">
+            {bases.map((b) => (
+              <li key={b.url}>
+                <a
+                  href={b.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group flex items-start gap-2 text-sm no-underline"
+                >
+                  <Download className="mt-0.5 size-4 shrink-0 text-sello" />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-tinta underline decoration-linea group-hover:decoration-tinta">{b.archivo}</span>
+                    <span className="text-xs text-tinta-2">
+                      {b.formato === "pdf" ? "PDF, listo para subir" : b.formato === "word" ? "Word: ábrelo y guárdalo como PDF antes de subirlo" : "Formato no compatible"}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          {urlGuatecompras && (
+            <a
+              href={urlGuatecompras}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-tinta-2 no-underline hover:text-tinta"
+            >
+              Ver todos los documentos en Guatecompras <ArrowUpRight className="size-3.5" />
+            </a>
+          )}
+        </div>
+      )}
+      {bases.length > 0 && <p className="pt-1 text-sm font-medium">2. Súbelas aquí</p>}
       <label
         className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 text-sm transition-colors ${
           archivo ? "border-tinta bg-papel" : "border-linea hover:border-tinta-3 hover:bg-papel"

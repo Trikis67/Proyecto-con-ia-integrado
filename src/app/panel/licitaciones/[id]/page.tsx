@@ -17,7 +17,7 @@ import {
   tituloPropio,
 } from "@/lib/formato";
 import type { DatosLicitacion } from "@/lib/guatecompras/ocds";
-import type { Analisis } from "@/lib/ia/analizar";
+import type { AnalisisGuardado } from "@/lib/ia/analizar";
 import { AnalizarIA } from "./analizar-ia";
 import { PanelAnalisis } from "./panel-analisis";
 import { EvaluarEncaje } from "./encaje";
@@ -43,7 +43,7 @@ type Licitacion = {
   moneda: string | null;
   datos: DatosLicitacion;
   titulo_ia: string | null;
-  analisis_ia: Analisis | null;
+  analisis_ia: AnalisisGuardado | null;
   monto_estimado_ia: number | null;
   fecha_cierre_ia: string | null;
   ia_documento: string | null;
@@ -192,7 +192,13 @@ async function Detalle({ params }: Pick<PageProps<"/panel/licitaciones/[id]">, "
             )}
             <div className={lic.analisis_ia ? "mt-6 border-t border-linea pt-5" : "mt-5"}>
               {lic.analisis_ia && <p className="mb-3 text-sm text-tinta-2">¿Tienes otro documento de esta licitación?</p>}
-              <AnalizarIA id={lic.id} yaAnalizada={Boolean(lic.analisis_ia)} bases={elegirBases(d.documentos)} urlGuatecompras={lic.url} />
+              <AnalizarIA
+                id={lic.id}
+                yaAnalizada={Boolean(lic.analisis_ia)}
+                documentosPrevios={lic.analisis_ia?.documentos_analizados ?? (lic.ia_documento ? [lic.ia_documento] : [])}
+                bases={elegirBases(d.documentos)}
+                urlGuatecompras={lic.url}
+              />
             </div>
           </section>
 

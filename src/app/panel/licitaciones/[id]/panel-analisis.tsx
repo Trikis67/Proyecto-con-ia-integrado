@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
-import type { Analisis } from "@/lib/ia/analizar";
+import type { Analisis, AnalisisGuardado } from "@/lib/ia/analizar";
 import { formatearMonto, formatoFechaLarga, haceCuanto } from "@/lib/formato";
 
 const TIPOS_REQUISITO: Record<Analisis["requisitos"][number]["tipo"], string> = {
@@ -10,9 +10,21 @@ const TIPOS_REQUISITO: Record<Analisis["requisitos"][number]["tipo"], string> = 
   otro: "Otros",
 };
 
-function Pag({ n }: { n: number | null }) {
-  if (n == null) return null;
-  return <span className="cifras ml-1.5 whitespace-nowrap text-xs text-tinta-2">pág. {n}</span>;
+/** «pág. 4», y con varios PDFs también de cuál: «pág. 4 · TERMINOS DE REFERENCIA…» */
+function Pag({ n, doc, varios }: { n: number | null; doc?: string | null; varios?: boolean }) {
+  if (n == null && !(varios && doc)) return null;
+  const corto = doc ? doc.replace(/^d+@/, "").replace(/.pdf$/i, "") : null;
+  return (
+    <span className="cifras ml-1.5 text-xs text-tinta-2" title={doc ?? undefined}>
+      {n != null && <span className="whitespace-nowrap">pág. {n}</span>}
+      {varios && corto && (
+        <>
+          {n != null && " · "}
+          <span className="inline-block max-w-[18ch] truncate align-bottom">{corto}</span>
+        </>
+      )}
+    </span>
+  );
 }
 
 export function PanelAnalisis({
@@ -20,21 +32,25 @@ export function PanelAnalisis({
   documento,
   analizadoEn,
 }: {
-  analisis: Analisis;
+  analisis: AnalisisGuardado;
   documento: string | null;
   analizadoEn: string | null;
 }) {
-  const claves: { etiqueta: string; valor: string | null; pagina: number | null; cita?: string | null }[] = [
+  // Con un solo PDF basta la página; con varios también decimos de qué archivo salió cada dato
+  const varios = (a.documentos_analizados?.length ?? 0) > 1;
+  const claves: { etiqueta: string; valor: string | null; pagina: number | null; doc?: string | null; cita?: string | null }[] = [
     {
       etiqueta: "Monto estimado",
       valor: a.monto_estimado.valor != null ? formatearMonto(a.monto_estimado.valor, a.monto_estimado.moneda ?? "GTQ") : null,
       pagina: a.monto_estimado.pagina,
+      doc: a.monto_estimado.documento,
       cita: a.monto_estimado.cita,
     },
     {
       etiqueta: "Cierre para ofertar",
       valor: a.fecha_cierre.fecha_hora ? formatoFechaLarga(a.fecha_cierre.fecha_hora) : null,
       pagina: a.fecha_cierre.pagina,
+      doc: a.fecha_cierre.documento,
       cita: a.fecha_cierre.cita,
     },
     { etiqueta: "Visita técnica", valor: a.visita_tecnica, pagina: null },
@@ -73,7 +89,7 @@ export function PanelAnalisis({
             <dt className="text-sm text-tinta-2">{c.etiqueta}</dt>
             <dd className="cifras mt-0.5 font-medium">
               {c.valor ?? <span className="font-normal text-tinta-2">No lo dice</span>}
-              {c.valor && <Pag n={c.pagina} />}
+              {c.valor && <Pag n={c.pagina} doc={c.doc} varios={varios} />}
             </dd>
             {c.valor && c.cita && <dd className="mt-1 text-xs italic leading-relaxed text-tinta-2">«{c.cita}»</dd>}
           </div>
@@ -94,7 +110,7 @@ export function PanelAnalisis({
                       <span>
                         {r.descripcion}
                         {!r.obligatorio && <span className="ml-1.5 text-xs text-tinta-2">(opcional)</span>}
-                        <Pag n={r.pagina} />
+                        <Pag n={r.pagina} doc={r.documento} varios={varios} />
                       </span>
                     </li>
                   ))}
@@ -117,7 +133,7 @@ export function PanelAnalisis({
                 </p>
                 <p className="mt-0.5 leading-relaxed text-tinta-2">
                   {g.descripcion}
-                  <Pag n={g.pagina} />
+                  <Pag n={g.pagina} doc={g.documento} varios={varios} />
                 </p>
               </li>
             ))}
@@ -132,7 +148,7 @@ export function PanelAnalisis({
             {a.documentos_requeridos.map((d, i) => (
               <li key={i}>
                 {d.nombre}
-                <Pag n={d.pagina} />
+                <Pag n={d.pagina} doc={d.documento} varios={varios} />
               </li>
             ))}
           </ol>
